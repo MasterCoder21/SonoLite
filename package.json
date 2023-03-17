@@ -1,0 +1,68 @@
+{
+  "name": "sonolite",
+  "displayName": "SonoLite",
+  "description": "SonoLite is a Sonolus server for testing charts.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sevenc-nanashi/PotatoFarm.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "sevenc-nanashi",
+    "url": "https://sevenc7c.com"
+  },
+  "version": "1.2.0",
+  "scripts": {
+    "start": "npx ts-node app.ts",
+    "dev": "npx ts-node-dev -T ./app.ts",
+    "compile": "npm run compile:ts & npm run compile:bin",
+    "compile:ts": "npx tsc --outDir dist & npm run compile:views",
+    "compile:views": "xcopy \"./views\" \"./dist/views\" /s /e",
+    "compile:bin": "npm run compile:bin:windows & npm run compile:bin:linux & npm run compile:bin:mac",
+    "compile:bin:windows": "npm run compile:bin:windows:x64 & npm run compile:bin:windows:x86",
+    "compile:bin:windows:x64": "npx nexe -i dist/app.js -r public -r package.json -t 12.9.1 --target windows-x64 -o dist/SonoLite-win-x64.exe",
+    "compile:bin:windows:x86": "npx nexe -i dist/app.js -r public -r package.json -t 12.9.1 --target windows-x86 -o dist/SonoLite-win-x86.exe",
+    "compile:bin:linux": "npm run compile:bin:linux:x64 & npm run compile:bin:linux:x86",
+    "compile:bin:linux:x64": "npx nexe -i dist/app.js -r public -r package.json -t 12.9.1 --target linux-x64 -o dist/SonoLite-linux-x64",
+    "compile:bin:linux:x86": "npx nexe -i dist/app.js -r public -r package.json -t 12.9.1 --target linux-x86 -o dist/SonoLite-linux-x86",
+    "compile:bin:mac": "npm run compile:bin:mac:x64 & npm run compile:bin:mac:x86",
+    "compile:bin:mac:x64": "npx nexe -i dist/app.js -r public -r package.json -t 12.9.1 --target mac-x64 -o dist/SonoLite-mac-x64",
+    "compile:bin:mac:x86": "npx nexe -i dist/app.js -r public -r package.json -t 12.9.1 --target mac-x86 -o dist/SonoLite-max-x86"
+  },
+  "dependencies": {
+    "@colors/colors": "^1.5.0",
+    "@types/axios": "^0.14.0",
+    "@types/multer": "^1.4.7",
+    "autoprefixer": "^10.4.2",
+    "axios": "^0.26.0",
+    "bcryptjs": "^2.4.3",
+    "ejs": "^3.1.6",
+    "express": "^4.17.2",
+    "glob": "^7.2.0",
+    "multer": "1.4.5-lts.1",
+    "nexe": "^4.0.0-beta.19",
+    "postcss": "^8.4.5",
+    "postcss-cli": "^9.1.0",
+    "recursive-last-modified": "^1.0.6",
+    "sonolus-core": "^1.1.2",
+    "sonolus-pjsekai-engine": "0.1.0-beta.10",
+    "ts-node": "^10.9.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.17",
+    "@types/express-serve-static-core": "^4.17.28",
+    "@types/glob": "^7.2.0",
+    "@types/node": "^17.0.14",
+    "@types/multer": "^1.4.7",
+    "eslint": "^8.23.1",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "nodemon": "^1.19.4",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^2.7.1",
+    "ts-node-dev": "^1.1.8"
+  },
+  "optionalDependencies": {
+    "fsevents": "*"
+  }
+}
