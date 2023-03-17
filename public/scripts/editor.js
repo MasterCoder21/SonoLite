@@ -1,5 +1,5 @@
 const iframe = document.getElementById('paletteworks_editor');
-const fullscreenButton = document.getElementById('#paletteworks_editor_fullscreen');
+const fullscreenButton = document.getElementById('paletteworks_editor_fullscreen');
 
 fullscreenButton.addEventListener('click', () => {
     if (iframe.requestFullscreen) {
@@ -10,7 +10,3 @@ fullscreenButton.addEventListener('click', () => {
         iframe.msRequestFullscreen();
     }
 });
-
-function requestEditorFullscreen() {
-    iframe.requestFullscreen();
-}
