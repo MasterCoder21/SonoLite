@@ -117,6 +117,20 @@ async function getScores(page) {
 	await fetch(`/get?url=${serverURL + `/sonolus/levels/list?page=${page}`}`)
 		.then(response => response.json())
 		.then(data => {
+			if (data.pageCount === undefined) {
+				var alertDiv = document.createElement('div');
+
+				// add Bootstrap classes to the div element
+				alertDiv.classList.add('alert', 'alert-danger', 'alert-dismissible', 'fade', 'show');
+
+				// set the message text
+				alertDiv.textContent = 'It seems like ' + serverURL + ' is not a valid Sonolus server!';
+
+				// add the alertDiv to the DOM
+				var container = document.getElementById('import-charts-body'); // replace 'container' with the ID of the element where you want to insert the alert
+				container.insertBefore(alertDiv, container.firstChild);
+				return;
+			}
 			levels = data;
 		})
 		.catch(err => {
@@ -195,6 +209,9 @@ function showScores(scores) {
 async function importScores() {
 	document.getElementById('import-button').disabled = true;
 	let scores = await getScores(0);
+	if (scores === undefined) {
+		return;
+	}
 
 	const modalBody = document.getElementById('import-charts-body');
 
