@@ -310,28 +310,25 @@ async function getLevels() {
     return stat.isDirectory()
   })
   for (let level of levelFs) {
-    var hasMetadata = false;
     let mtd = null;
     if (
       (
         await Promise.all(
           ["metadata.json", "data.txt", "bgm.*", "jacket.*"].map(async (file) => {
             if ((await glob(`./levels/${level.name}/${file}`)).length > 0) {
-              if (file === "metadata.json") {
-                hasMetadata = true;
-              }
               return true
             } else {
-              if (hasMetadata) {
-                mtd = JSON.parse(await fs.readFile(`./levels/${level.name}/metadata.json`, "utf8"));
-                if (mtd.type === 'imported') {
-                  return true;
+                try {
+                  mtd = JSON.parse(await fs.readFile(`./levels/${level.name}/metadata.json`, "utf8"));
+                  if (mtd.type === 'imported') {
+                    return true;
+                  }
+                } catch {
+                  printWarn(
+                    `./levels/${level.name}/${file} was not found.`
+                  )
+                  return false
                 }
-              }
-              printWarn(
-                `./levels/${level.name}/${file} was not found.`
-              )
-              return false
             }
           })
         )
