@@ -103,6 +103,11 @@
       <% } else { %>
         <div class="card p-4 m-2 w-100">
           <div class="container px-1">
+            <button class="btn btn-primary float-left" data-bs-toggle="modal" data-bs-target="#import-charts">Import Charts</button>
+            <% if (config.passwordProtectionEnabled) {%>
+              <p>Make sure to include the password below when importing charts!</p>
+              <br>
+            <% } %>
             <div class="row gx-5">
               <div class="col">
                 <div>
@@ -171,6 +176,29 @@
           </div>
         </div>
       <% } %>
+    </div>
+  </div>
+  <div class="modal fade" id="import-charts" tabindex="-1" role="dialog" aria-labelledby="modalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalLabel">Import Charts</h5>
+          <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body" id="import-charts-body">
+          <div class="form-group d-flex">
+            <input type="text" id="server-url" class="form-control" placeholder="Server URL">
+            <button class="btn btn-primary" id="import-button" onclick="importScores()">Import</button>
+          </div>
+          
+          <hr>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
     </div>
   </div>
   <script src="./scripts/addscore.js"></script>

@@ -79,9 +79,9 @@ async function setConfig(data: any = undefined) {
       HOME + "/SonoLite.json",
       "utf8"
     )
-    
-    const json = JSON.parse(text) 
-    if(data === undefined) {
+
+    const json = JSON.parse(text)
+    if (data === undefined) {
       return await fs.writeFile(
         HOME + "/SonoLite.json",
         JSON.stringify({
@@ -144,7 +144,7 @@ async function deleteScore(id) {
   try {
     deleteDirectory(`./levels/${id}`)
     return true
-  } catch  {
+  } catch {
     return false
   }
   // fs.rm(`./levels/${id}`, {recursive: true, force: true})
@@ -177,44 +177,72 @@ async function editScore(data: any) {
 async function addScore(data: any) {
   // fs.copyFile(`./levels/${data.title}/data.txt`, data.score)
   // streamMove(data.score, `./levels/${data.title}/data.txt`)
-  try {
-    await fs.access(`./levels/${data.id}`)
-  } catch {
-    printInfo(`./levels/${data.id} was not found, creating.`)
-    await fs.mkdir(`./levels/${data.id}`)
-    printInfo(`./levels/${data.id} created.`)
-  }
-  try {
-    await fs.writeFile(`./levels/${data.id}/data.txt`, data.score)
-    // streamMove(data.music, `./levels/${data.title}/bgm.mp3`)
-    var musicdata = data.music.replace(/^data:audio\/\w+;base64,/, "")
-    var musicbuf = Buffer.from(musicdata, 'base64')
-    await fs.writeFile(`./levels/${data.id}/bgm.mp3`, musicbuf)
-    const img = data.jacketPath
-    await fs.writeFile('./levels/test.txt', data.music);
-    var imgdata = data.jacket.replace(/^data:image\/\w+;base64,/, "")
-    var imgbuf = Buffer.from(imgdata, 'base64')
-    if (img.endsWith("png")) {
-      // streamMove(img, `./levels/${data.title}/jacket.png`)
-      await fs.writeFile(`./levels/${data.id}/jacket.png`, imgbuf)
-    } else if (img.endsWith("jpg")) {
-      // streamMove(img, `./levels/${data.title}/jacket.jpg`)
-      await fs.writeFile(`./levels/${data.id}/jacket.jpg`, imgbuf)
-    } else if (img.endsWith("jpeg")) {
-      // streamMove(img, `./levels/${data.title}/jacket.jpeg`)
-      await fs.writeFile(`./levels/${data.id}/jacket.jpeg`, imgbuf)
+  if (data.type === 'local') {
+    try {
+      await fs.access(`./levels/${data.id}`)
+    } catch {
+      printInfo(`./levels/${data.id} was not found, creating.`)
+      await fs.mkdir(`./levels/${data.id}`)
+      printInfo(`./levels/${data.id} created.`)
     }
-    await fs.writeFile(`./levels/${data.id}/metadata.json`, JSON.stringify({
-      title: data.title,
-      artists: data.artists,
-      author: data.author,
-      rating: data.difficulty,
-      description: data.description,
-      genre: data.genre,
-    }))
-    return true
-  } catch {
-    return false
+    try {
+      await fs.writeFile(`./levels/${data.id}/data.txt`, data.score)
+      // streamMove(data.music, `./levels/${data.title}/bgm.mp3`)
+      var musicdata = data.music.replace(/^data:audio\/\w+;base64,/, "")
+      var musicbuf = Buffer.from(musicdata, 'base64')
+      await fs.writeFile(`./levels/${data.id}/bgm.mp3`, musicbuf)
+      const img = data.jacketPath
+      await fs.writeFile('./levels/test.txt', data.music);
+      var imgdata = data.jacket.replace(/^data:image\/\w+;base64,/, "")
+      var imgbuf = Buffer.from(imgdata, 'base64')
+      if (img.endsWith("png")) {
+        // streamMove(img, `./levels/${data.title}/jacket.png`)
+        await fs.writeFile(`./levels/${data.id}/jacket.png`, imgbuf)
+      } else if (img.endsWith("jpg")) {
+        // streamMove(img, `./levels/${data.title}/jacket.jpg`)
+        await fs.writeFile(`./levels/${data.id}/jacket.jpg`, imgbuf)
+      } else if (img.endsWith("jpeg")) {
+        // streamMove(img, `./levels/${data.title}/jacket.jpeg`)
+        await fs.writeFile(`./levels/${data.id}/jacket.jpeg`, imgbuf)
+      }
+      await fs.writeFile(`./levels/${data.id}/metadata.json`, JSON.stringify({
+        title: data.title,
+        artists: data.artists,
+        author: data.author,
+        rating: data.difficulty,
+        description: data.description,
+        genre: data.genre,
+        type: 'local'
+      }))
+      return true
+    } catch {
+      return false
+    }
+  } else if (data.type === 'imported') {
+    try {
+      await fs.access(`./levels/${data.name}`)
+    } catch {
+      printInfo(`./levels/${data.name} was not found, creating.`)
+      await fs.mkdir(`./levels/${data.name}`)
+      printInfo(`./levels/${data.name} created.`)
+    }
+    try {
+      await fs.writeFile(`./levels/${data.name}/metadata.json`, JSON.stringify({
+        name: data.name,
+        rating: data.rating,
+        title: data.title,
+        artists: data.artists,
+        author: data.author,
+        cover: data.cover,
+        bgm: data.bgm,
+        preview: data.preview,
+        data: data.data,
+        type: 'imported'
+      }))
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -252,6 +280,24 @@ function streamMove(src: string, dest: string) {
   })
 }
 
+function levelSortFunction(a, b) {
+  let aLastModified = null;
+  if (a.id === undefined) {
+    aLastModified = lastModified(`./levels/${a.data.name}`)
+  } else {
+    aLastModified = lastModified(`./levels/${a.id}`)
+  }
+
+  let bLastModified = null;
+  if (b.id === undefined) {
+    bLastModified = lastModified(`./levels/${b.data.name}`)
+  } else {
+    bLastModified = lastModified(`./levels/${b.id}`)
+  }
+
+  return bLastModified - aLastModified;
+}
+
 async function getLevels() {
   let levels = []
   let levelFs = (
@@ -264,13 +310,24 @@ async function getLevels() {
     return stat.isDirectory()
   })
   for (let level of levelFs) {
+    var hasMetadata = false;
+    let mtd = null;
     if (
       (
         await Promise.all(
-          ["data.txt", "bgm.*", "jacket.*", "metadata.json"].map(async (file) => {
+          ["metadata.json", "data.txt", "bgm.*", "jacket.*"].map(async (file) => {
             if ((await glob(`./levels/${level.name}/${file}`)).length > 0) {
+              if (file === "metadata.json") {
+                hasMetadata = true;
+              }
               return true
             } else {
+              if (hasMetadata) {
+                mtd = JSON.parse(await fs.readFile(`./levels/${level.name}/metadata.json`, "utf8"));
+                if (mtd.type === 'imported') {
+                  return true;
+                }
+              }
               printWarn(
                 `./levels/${level.name}/${file} was not found.`
               )
@@ -280,30 +337,44 @@ async function getLevels() {
         )
       ).every((e) => e)
     ) {
-      // printInfo(`./levels/${level.name} was recognized as a valid directory.`)
-      let level_data = await fs.readFile(
-        `./levels/${level.name}/data.txt`,
-        "utf8"
-      )
-      let level_metadata = JSON.parse(await fs.readFile(`./levels/${level.name}/metadata.json`, "utf8"))
-      levels.push(
-        new Level(level.name, {
-          // title: level_data.match(/#TITLE\s+"(.*)"/)![1],
-          title: level_metadata.title,
-          artists: level_metadata.artists,
-          author: level_metadata.author,
-          rating: level_metadata.rating,
-          description: level_metadata.description,
-          genre: level_metadata.genre,
-        })
-      )
+      if (mtd === null) {
+        mtd = JSON.parse(await fs.readFile(`./levels/${level.name}/metadata.json`, "utf8"))
+      }
+      let type = mtd.type;
+      if (type === undefined || type === 'local') {
+        levels.push(
+          new Level(level.name, {
+            // title: level_data.match(/#TITLE\s+"(.*)"/)![1],
+            title: mtd.title,
+            artists: mtd.artists,
+            author: mtd.author,
+            rating: mtd.rating,
+            description: mtd.description,
+            genre: mtd.genre,
+          })
+        )
+      } else if (type === 'imported') {
+        levels.push(
+          new ImportedLevel({
+            name: mtd.name,
+            rating: mtd.rating,
+            title: mtd.title,
+            artists: mtd.artists,
+            author: mtd.author,
+            cover: mtd.cover,
+            bgm: mtd.bgm,
+            preview: mtd.preview,
+            data: mtd.data
+          })
+        )
+      }
     }
   }
-  printInfo(`Loaded ${levelFs.length} levels`)
-  return levels.sort(
-    (a, b) =>
-      lastModified(`./levels/${b.id}`) - lastModified(`./levels/${a.id}`)
+  levels = levels.sort(
+    (a, b) => levelSortFunction(a, b)
   )
+  printInfo(`Loaded ${levelFs.length} levels`)
+  return levels;
 }
 
 function printSection(section: string, color: string) {
@@ -323,10 +394,11 @@ function printWarn(content: string) {
 function printInfo(content: string) {
   console.log("i) ".blue + content)
 }
+
 class Level {
   data: any
   id: string
-  constructor(id: string, data: { title: string, artists: string, author: string, rating: number, description: string, genre: string}) {
+  constructor(id: string, data: { title: string, artists: string, author: string, rating: number, description: string, genre: string }) {
     this.id = id
     this.data = data
   }
@@ -369,6 +441,67 @@ class Level {
   }
 }
 
+class ImportedLevel {
+  data: any
+  constructor(data: { name: string, rating: number, title: string, artists: string, author: string, cover: string, bgm: string, preview: string, data: string }) {
+    this.data = data
+  }
+  json() {
+    return {
+      name: this.data.name,
+      version: 1,
+      rating: this.data.rating,
+      title: this.data.title,
+      artists: this.data.artists,
+      author: this.data.author,
+      cover: {
+        type: "LevelCover",
+        url: this.data.cover
+      },
+      bgm: {
+        type: "LevelBgm",
+        url: this.data.bgm
+      },
+      preview: {
+        type: "LevelPreview",
+        url: this.data.preview
+      },
+      data: {
+        type: "LevelData",
+        url: this.data.data
+      },
+      useBackground: {
+        useDefault: true,
+      },
+      useEffect: {
+        useDefault: true,
+      },
+      useParticle: {
+        useDefault: true,
+      },
+      useSkin: {
+        useDefault: true,
+      },
+      engine: engine
+    }
+  }
+}
+
+// -- Misc Endpoints --------------------------------
+app.get("/get", async (req, res) => {
+  printSection("Get: /get " + req.query.url, "green");
+
+  if (typeof req.query.url === "string") {
+    let data = JSON.parse(
+      JSON.stringify(
+        (await axios.get(req.query.url)).data
+      )
+    )
+    res.json(data);
+  }
+
+});
+
 // -- Sonolus endpoints --------------------------------
 
 app.get("/sonolus/info", async (req: Request, res: Response) => {
@@ -377,7 +510,7 @@ app.get("/sonolus/info", async (req: Request, res: Response) => {
   const config = await getConfig()
   let bannerIndex = config.serverSettings.selectedBannerIndex
   let banner = null
-  if(bannerIndex !== -1) {
+  if (bannerIndex !== -1) {
     banner = config.serverSettings.serverBanners[bannerIndex]
   }
   res.json({
@@ -386,63 +519,68 @@ app.get("/sonolus/info", async (req: Request, res: Response) => {
       items: levels.slice(0, 5).map((level) => level.json()),
       search: {
         options: [
-          { 
-            name:"#KEYWORDS", placeholder:"#KEYWORDS", query:"keywords", type:"text",
+          {
+            name: "#KEYWORDS", placeholder: "#KEYWORDS", query: "keywords", type: "text",
           },
-          { 
-            "query": "minRating", "name": "#RATING_MINIMUM", "type": "slider", "def": 0, "min": 0, "max": 50, "step": 1 
+          {
+            "query": "minRating", "name": "#RATING_MINIMUM", "type": "slider", "def": 0, "min": 0, "max": 50, "step": 1
           },
-          { "query": "maxRating", "name": "#RATING_MAXIMUM",
+          {
+            "query": "maxRating", "name": "#RATING_MAXIMUM",
             "type": "slider", "def": 50, "min": 0, "max": 50, "step": 1
           }
         ]
       },
     },
-    skins: { 
-      items: [], 
+    skins: {
+      items: [],
       search: {
         options: [
           {
             query: "keywords", name: "#KEYWORDS", type: "text", placeholder: "#KEYWORDS"
           }
         ]
-      }, 
+      },
     },
-    backgrounds: { items: [], 
+    backgrounds: {
+      items: [],
       search: {
         options: [
           {
             query: "keywords", name: "#KEYWORDS", type: "text", placeholder: "#KEYWORDS"
           }
         ]
-      }, 
+      },
     },
-    particles: { items: [], 
+    particles: {
+      items: [],
       search: {
         options: [
           {
             query: "keywords", name: "#KEYWORDS", type: "text", placeholder: "#KEYWORDS"
           }
         ]
-      }, 
+      },
     },
-    effects: { items: [], 
+    effects: {
+      items: [],
       search: {
         options: [
           {
             query: "keywords", name: "#KEYWORDS", type: "text", placeholder: "#KEYWORDS"
           }
         ]
-      }, 
+      },
     },
-    engines: { items: [], 
+    engines: {
+      items: [],
       search: {
         options: [
           {
             query: "keywords", name: "#KEYWORDS", type: "text", placeholder: "#KEYWORDS"
           }
         ]
-      }, 
+      },
     },
     // The below field modifies the original "info.d.ts" file.
     banner: {
@@ -467,20 +605,20 @@ app.get("/sonolus/levels/list", async (req: Request, res: Response) => {
 
   const queryKeywords = req.query.keywords
   let keywords = []
-  if(typeof queryKeywords === 'string') {
+  if (typeof queryKeywords === 'string') {
     keywords = queryKeywords.split(" ")
   }
 
-  for(let a = 0; a < rawlevels.length; a++) {
-    for(let b = 0; b < keywords.length; b++) {
-      if(rawlevels[a].json().title.toLowerCase().includes(keywords[b].toLowerCase())) {
+  for (let a = 0; a < rawlevels.length; a++) {
+    for (let b = 0; b < keywords.length; b++) {
+      if (rawlevels[a].json().title.toLowerCase().includes(keywords[b].toLowerCase())) {
         levels.push(rawlevels[a])
         continue
       }
     }
   }
-  
-  if(queryKeywords === undefined) {
+
+  if (queryKeywords === undefined) {
     levels = rawlevels
   }
 
@@ -489,32 +627,32 @@ app.get("/sonolus/levels/list", async (req: Request, res: Response) => {
   const queryMaxRating = req.query.maxRating
   let minRating = 0
   let maxRating = 50
-  if(queryMinRating !== undefined && typeof queryMinRating === 'string') {
+  if (queryMinRating !== undefined && typeof queryMinRating === 'string') {
     minRating = parseInt(queryMinRating)
   }
-  if(queryMaxRating !== undefined && typeof queryMaxRating === 'string') {
+  if (queryMaxRating !== undefined && typeof queryMaxRating === 'string') {
     maxRating = parseInt(queryMaxRating)
   }
-  if(minRating > maxRating) {
+  if (minRating > maxRating) {
     minRating = maxRating
   }
 
   rawlevels = levels
   levels = []
 
-  for(let a = 0; a < rawlevels.length; a++) {
+  for (let a = 0; a < rawlevels.length; a++) {
     let rating = parseInt(rawlevels[a].json().rating)
-    if(rating >= minRating && rating <= maxRating) {
+    if (rating >= minRating && rating <= maxRating) {
       levels.push(rawlevels[a])
     }
   }
 
   // == End sorting levels ==
-  
+
   // Paging
   const queryPage = req.query.page
   let pageQuery = 0
-  if(typeof queryPage === 'string') {
+  if (typeof queryPage === 'string') {
     pageQuery = parseInt(queryPage)
   }
   let pageMin = pageQuery * 5
@@ -528,14 +666,14 @@ app.get("/sonolus/levels/list", async (req: Request, res: Response) => {
     pageCount: Math.ceil(levels.length / 5),
     search: {
       options: [
-        { 
-          name:"#KEYWORDS", placeholder:"#KEYWORDS", query:"keywords", type:"text",
+        {
+          name: "#KEYWORDS", placeholder: "#KEYWORDS", query: "keywords", type: "text",
         },
-        { 
-          "query": "minRating", "name": "#RATING_MINIMUM", "type": "slider", "def": 0, "min": 0, "max": 50, "step": 1 
+        {
+          "query": "minRating", "name": "#RATING_MINIMUM", "type": "slider", "def": 0, "min": 0, "max": 50, "step": 1
         },
-        { 
-          "query": "maxRating", "name": "#RATING_MAXIMUM", "type": "slider", "def": 50, "min": 0, "max": 50, "step": 1 
+        {
+          "query": "maxRating", "name": "#RATING_MAXIMUM", "type": "slider", "def": 50, "min": 0, "max": 50, "step": 1
         }
       ]
     },
@@ -544,26 +682,48 @@ app.get("/sonolus/levels/list", async (req: Request, res: Response) => {
 
 app.get("/sonolus/levels/:id", async (req: Request, res: Response) => {
   printSection(`Sonolus: /levels/${req.params.id}`, "yellow")
-  let level_data = await fs.readFile(
-    `./levels/${req.params.id}/data.txt`,
-    "utf8"
-  )
-  let level_metadata = JSON.parse(await fs.readFile(`./levels/${req.params.id}/metadata.json`, "utf8"))
-  let title = level_data.match(/#TITLE\s+"(.*)"/)![1]
-  printInfo(`./levels/${req.params.id} - ${title} is loading.`)
-  res.json({
-    item: new Level(req.params.id, {
-      // title,
-      title: level_metadata.title,
-      artists: level_metadata.artists,
-      author: level_metadata.author,
-      rating: level_metadata.rating,
-      description: level_metadata.description,
-      genre: level_metadata.genre,
-    }).json(),
-    description: level_metadata.description,
-    recommended: [],
-  })
+  let mtd = JSON.parse(await fs.readFile(`./levels/${req.params.id}/metadata.json`, "utf8"))
+  
+  if (mtd.type === undefined || mtd.type === 'local') {
+    let level_data = await fs.readFile(
+      `./levels/${req.params.id}/data.txt`,
+      "utf8"
+    )
+    let title = level_data.match(/#TITLE\s+"(.*)"/)![1]
+    printInfo(`./levels/${req.params.id} - ${title} is loading.`)
+
+    res.json({
+      item: new Level(req.params.id, {
+        // title,
+        title: mtd.title,
+        artists: mtd.artists,
+        author: mtd.author,
+        rating: mtd.rating,
+        description: mtd.description,
+        genre: mtd.genre,
+      }).json(),
+      description: mtd.description,
+      recommended: [],
+    })
+  } else {
+    let title = mtd.title
+    printInfo(`./levels/${req.params.id} - ${title} is loading.`)
+
+    res.json({
+      item: new ImportedLevel({
+        name: mtd.name,
+        rating: mtd.rating,
+        title: mtd.title,
+        artists: mtd.artists,
+        author: mtd.author,
+        cover: mtd.cover,
+        bgm: mtd.bgm,
+        preview: mtd.preview,
+        data: mtd.data
+      }).json(),
+      recommended: [],
+    })
+  }
 })
 
 app.get("/local/:id", async (_req: Request, res: Response) => {
@@ -585,42 +745,63 @@ app.get("/local/:id", async (_req: Request, res: Response) => {
 
 app.get("/local/:id/bgm", async (req: Request, res: Response) => {
   printSection(`Sonolus: /local/${req.params.id}/bgm`, "yellow")
-  res.sendFile(path.resolve((await glob(`./levels/${req.params.id}/bgm.*`))[0]))
+  let mtd = JSON.parse(await fs.readFile(`./levels/${req.params.id}/metadata.json`, "utf8"))
+  if (mtd.type === undefined || mtd.type === 'local') {
+    res.sendFile(path.resolve((await glob(`./levels/${req.params.id}/bgm.*`))[0]))
+  } else {
+    res.redirect(mtd.bgm);
+  }
 })
 
 app.get("/local/:id/jacket", async (req: Request, res: Response) => {
   printSection(`Sonolus: /local/${req.params.id}/jacket`, "yellow")
-  let jacketPath: string | undefined = (
-    await glob(`./levels/${req.params.id}/jacket.*`)
-  )[0]
-  if (jacketPath) {
-    printInfo(`${jacketPath} I found.`)
-    res.sendFile(path.resolve(jacketPath))
+  let mtd = JSON.parse(await fs.readFile(`./levels/${req.params.id}/metadata.json`, "utf8"))
+  if (mtd.type === undefined || mtd.type === 'local') {
+    let jacketPath: string | undefined = (
+      await glob(`./levels/${req.params.id}/jacket.*`)
+    )[0]
+    if (jacketPath) {
+      printInfo(`${jacketPath} I found.`)
+      res.sendFile(path.resolve(jacketPath))
+    } else {
+      printWarn(`${jacketPath} was not found.`)
+      res.send(await fs.readFile(`public/empty.png`))
+    }
   } else {
-    printWarn(`${jacketPath} was not found.`)
-    res.send(await fs.readFile(`public/empty.png`))
+    res.redirect(mtd.cover);
   }
 })
 
 app.get("/local/:id/data", async (req: Request, res: Response) => {
   printSection(`Sonolus: /local/${req.params.id}/data`, "yellow")
-  printInfo(`./levels/${req.params.id}/data.txt is being converted.`)
-  let data = await fs.readFile(`./levels/${req.params.id}/data.txt`, "utf8")
-  res.send(gzipSync(JSON.stringify(fromSus(data))))
+  let mtd = JSON.parse(await fs.readFile(`./levels/${req.params.id}/metadata.json`, "utf8"))
+  if (mtd.type === undefined || mtd.type === 'local') {
+    printInfo(`./levels/${req.params.id}/data.txt is being converted.`)
+    let data = await fs.readFile(`./levels/${req.params.id}/data.txt`, "utf8")
+    res.send(gzipSync(JSON.stringify(fromSus(data))))
+  } else {
+    let data = (await axios.get(mtd.data)).data;
+    res.send(gzipSync(JSON.stringify(fromSus(data))))
+  }
 })
 
 app.get("/local/:id/data/nodownload", async (req: Request, res: Response) => {
   printSection(`Sonolus: /local/${req.params.id}/data`, "yellow")
-  let options = {
-    root: path.join(__dirname)
-  }
-  res.sendFile(`./levels/${req.params.id}/data.txt`, options, function (err) {
-    if(err) {
-      printWarn(err.message)
-      res.sendStatus(404)
+  let mtd = JSON.parse(await fs.readFile(`./levels/${req.params.id}/metadata.json`, "utf8"))
+  if (mtd.type === undefined || mtd.type === 'local') {
+    let options = {
+      root: path.join(__dirname)
     }
-    else printInfo("Sent " + `./levels/${req.params.id}/data`)
-  })
+    res.sendFile(`./levels/${req.params.id}/data.txt`, options, function (err) {
+      if (err) {
+        printWarn(err.message)
+        res.sendStatus(404)
+      }
+      else printInfo("Sent " + `./levels/${req.params.id}/data`)
+    })
+  } else {
+    res.redirect(mtd.data)
+  }
 })
 
 app.get("/local/:id/metadata", async (req: Request, res: Response) => {
@@ -629,7 +810,7 @@ app.get("/local/:id/metadata", async (req: Request, res: Response) => {
     root: path.join(__dirname)
   }
   res.sendFile(`./levels/${req.params.id}/metadata.json`, options, function (err) {
-    if(err) {
+    if (err) {
       printWarn(err.message)
       res.sendStatus(404)
     }
@@ -691,26 +872,42 @@ app.get("/levels", async (_req: Request, res: Response) => {
   printInfo("I am getting the sheet music.")
   for (let level of await getLevels()) {
     // printInfo(`./levels/${level.name} was recognized as a valid directory.`)
-    let data: LevelData = {
-      id: level.id,
-      sustitle: undefined,
-      size: undefined,
-      editor: undefined,
-      metadata: undefined,
-    }
-
-    let levelData = await fs.readFile(`./levels/${level.id}/data.txt`, "utf8")
-    data.sustitle = levelData.match(/#TITLE\s+"(.*)"/)?.[1] || "?"
-    data.size = levelData.length
-    if (levelData.match(/^This file was generated by (.*)\./)) {
-      data.editor = levelData.match(/^This file was generated by (.*)\./)![1]
+    let mtd = null;
+    if (level.id === undefined) {
+      mtd = JSON.parse(await fs.readFile(`./levels/${level.data.name}/metadata.json`, "utf8"))
     } else {
-      data.editor = "?"
+      mtd = JSON.parse(await fs.readFile(`./levels/${level.id}/metadata.json`, "utf8"))
     }
-    let level_metadata = JSON.parse(await fs.readFile(`./levels/${level.id}/metadata.json`, "utf8"))
-    data.metadata = level_metadata
-
-    levels.push(data)
+    if (mtd.type === undefined || mtd.type === 'local') {
+      let data: LevelData = {
+        id: level.id,
+        sustitle: undefined,
+        size: undefined,
+        editor: undefined,
+        metadata: undefined,
+      }
+  
+      let levelData = await fs.readFile(`./levels/${level.id}/data.txt`, "utf8")
+      data.sustitle = levelData.match(/#TITLE\s+"(.*)"/)?.[1] || "?"
+      data.size = levelData.length
+      if (levelData.match(/^This file was generated by (.*)\./)) {
+        data.editor = levelData.match(/^This file was generated by (.*)\./)![1]
+      } else {
+        data.editor = "?"
+      }
+      data.metadata = mtd
+  
+      levels.push(data)
+    } else if (mtd.type === 'imported') {
+      let data: LevelData = {
+        id: level.data.name,
+        sustitle: undefined,
+        size: undefined,
+        editor: undefined,
+        metadata: mtd
+      }
+      levels.push(data);
+    }
   }
   res.render("scorelist.ejs", {
     levels,
@@ -743,12 +940,12 @@ app.get("/add", async (_req: Request, res: Response) => {
 app.get("/edit", async (_req: Request, res: Response) => {
   printSection("UI: /edit", "magenta")
   let id = _req.query.id
-  if(id === undefined) {
+  if (id === undefined) {
     res.sendStatus(400)
     return
   }
   let level_metadata = JSON.parse(await fs.readFile(`./levels/${id}/metadata.json`, "utf8"))
-  
+
   res.render("addscore.ejs", {
     editing: true,
     id: id,
@@ -777,32 +974,32 @@ app.get("/levels/:id/:file", async (_req: Request, res: Response) => {
   }
   let id = _req.params.id
   let file = _req.params.file
-  if(file === "metadata") {
+  if (file === "metadata") {
     res.sendFile(`./levels/${id}/${file}.json`, options, function (err) {
-      if(err) {
+      if (err) {
         printWarn(err.message)
         res.sendStatus(404)
       }
       else printInfo("Sent " + `./levels/${id}/${file}`)
     })
-  } else if(file === "bgm") {
+  } else if (file === "bgm") {
     res.sendFile(`./levels/${id}/${file}.mp3`, options, function (err) {
-      if(err) {
+      if (err) {
         printWarn(err.message)
         res.sendStatus(404)
       }
       else printInfo("Sent " + `./levels/${id}/${file}`)
     })
-  } else if(file === "data") {
+  } else if (file === "data") {
     res.sendFile(`./levels/${id}/${file}.txt`, options, function (err) {
-      if(err) {
+      if (err) {
         printWarn(err.message)
         res.sendStatus(404)
       }
       else printInfo("Sent " + `./levels/${id}/${file}`)
     })
   } else {
-    if(file.startsWith("jacket")) {
+    if (file.startsWith("jacket")) {
       let jacketPath: string | undefined = (
         await glob(`./levels/${id}/jacket.*`)
       )[0]
@@ -820,7 +1017,7 @@ app.get("/levels/:id/:file", async (_req: Request, res: Response) => {
 app.post("/post/checkpwd", async (req: Request, res: Response) => {
   printSection("UI: /post/checkpwd", "magenta")
   printInfo("Checking equality of given password.")
-  if(req.body.password === await getConfig("password")) {
+  if (req.body.password === await getConfig("password")) {
     printInfo("Passwords are equal.")
     res.json({ status: "ok" })
   } else {
@@ -840,8 +1037,8 @@ app.post("/post/config", async (req: Request, res: Response) => {
 app.post("/post/add", async (req: Request, res: Response) => {
   printSection("UI: /add", "magenta")
   printInfo("Adding score.")
-  if(await getConfig("passwordProtectionEnabled")) {
-    if(req.body.verification === await getConfig("password")) {
+  if (await getConfig("passwordProtectionEnabled")) {
+    if (req.body.verification === await getConfig("password")) {
       if (await addScore(req.body)) {
         printInfo("Added score.")
         res.json({ status: "ok" })
@@ -850,7 +1047,7 @@ app.post("/post/add", async (req: Request, res: Response) => {
         res.json({ status: "internal_error" })
       }
     } else {
-      res.json({status: "auth_failed"})
+      res.json({ status: "auth_failed" })
       printInfo("Authentication failed.")
       return
     }
@@ -868,8 +1065,8 @@ app.post("/post/add", async (req: Request, res: Response) => {
 app.post("/post/edit", async (req: Request, res: Response) => {
   printSection("UI: /edit", "magenta")
   printInfo("Editing score.")
-  if(await getConfig("passwordProtectionEnabled")) {
-    if(req.body.verification === await getConfig("password")) {
+  if (await getConfig("passwordProtectionEnabled")) {
+    if (req.body.verification === await getConfig("password")) {
       if (await editScore(req.body)) {
         printInfo("Edited score.")
         res.json({ status: "ok" })
@@ -878,7 +1075,7 @@ app.post("/post/edit", async (req: Request, res: Response) => {
         res.json({ status: "internal_error" })
       }
     } else {
-      res.json({status: "auth_failed"})
+      res.json({ status: "auth_failed" })
       printInfo("Authentication failed.")
       return
     }
@@ -896,8 +1093,8 @@ app.post("/post/edit", async (req: Request, res: Response) => {
 app.post("/post/delete", async (req: Request, res: Response) => {
   printSection("UI: /delete", "magenta")
   printInfo("Deleting score.")
-  if(await getConfig("passwordProtectionEnabled")) {
-    if(req.body.verification === await getConfig("password")) {
+  if (await getConfig("passwordProtectionEnabled")) {
+    if (req.body.verification === await getConfig("password")) {
       if (await deleteScore(req.body.id)) {
         printInfo("Deleted score.")
         res.json({ status: "ok" })
@@ -906,7 +1103,7 @@ app.post("/post/delete", async (req: Request, res: Response) => {
         res.json({ status: "internal_error" })
       }
     } else {
-      res.json({status: "auth_failed"})
+      res.json({ status: "auth_failed" })
       printInfo("Authentication failed.")
       return
     }

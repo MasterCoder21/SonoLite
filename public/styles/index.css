@@ -20,3 +20,8 @@ h1 {
 .search-container select {
   font-size: 14px;
 }
+
+.chart-preview-text {
+  float: left;
+  margin-left: 10px;
+}

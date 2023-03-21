@@ -64,28 +64,46 @@
               <p id="ldescription" hidden><%= level.metadata.description %></p>
               <p id="lgenre" hidden><%= level.metadata.genre %></p>
               <h3><%= level.metadata.title %> - <span class="font-monospace"><%= level.id %></span></h3>
-              <p>
-                Title from <a href="/local/<%= level.id %>/data">data.txt</a>: <span class="font-monospace"><%= level.sustitle %></span>
-              </p>
-              <img class="float-left" src="/local/<%= level.id %>/jacket" width="64" height="64">
-              <p>
-                Size: <span class="font-monospace"><%= level.size == "?" ? level.size :Math.floor(level.size / 1024) + "KB" %></span><br>
-                Editor: <span class="font-monospace"><%= level.editor %></span>
+              <% if (level.metadata.type === undefined || level.metadata.type === 'local') { %>
+                <p>
+                  Title from <a href="/local/<%= level.id %>/data">data.txt</a>: <span class="font-monospace"><%= level.sustitle %></span>
+                </p>
+                <img class="float-left" src="/local/<%= level.id %>/jacket" width="64" height="64">
+                <p>
+                  Size: <span class="font-monospace"><%= level.size == "?" ? level.size :Math.floor(level.size / 1024) + "KB" %></span><br>
+                  Editor: <span class="font-monospace"><%= level.editor %></span>
                 <br>
+              <% } else { %>
+                <img class="float-left" src="<%= level.metadata.cover %>" width="64" height="64"> 
+              <% } %>
+
                 <a href="/local/<%= level.id %>">View Level Files</a>
                 
                 <div class="container px-1">
                   <div class="row gx-1">
                     <div class="col">
                       <div class="d-flex justify-content-between">
-                        <button class="btn btn-primary" id="editscore" onclick="editScore(<%= level.id %>)">Edit</button>
-                        <% if (config.passwordProtectionEnabled) {%>
-                        <div class="d-flex justify-content-between">
-                          <input type="password" class="form-control" id="verification_<%= level.id %>" placeholder="Password" required>
-                          <button class="btn btn-danger" id="deletescore" onclick="deleteScore(<%= level.id %>)"><i class="fa fa-close"></i></button>
-                        </div>
+                        <% if (level.metadata.type === undefined || level.metadata.type === 'local') { %>
+                          <button class="btn btn-primary" id="editscore" onclick="editScore(<%= level.id %>)">Edit</button>
+                        <% } %>
+                        <% if (level.metadata.type === undefined || level.metadata.type === 'local') { %>
+                          <% if (config.passwordProtectionEnabled) { %>
+                          <div class="d-flex justify-content-between">
+                            <input type="password" class="form-control" id="verification_<%= level.id %>" placeholder="Password" required>
+                            <button class="btn btn-danger" id="deletescore" onclick="deleteScore(<%= level.id %>)"><i class="fa fa-close"></i></button>
+                          </div>
+                          <% } else { %>
+                            <button class="btn btn-danger" id="deletescore" onclick="deleteScore(<%= level.id %>)"><i class="fa fa-close"></i></button>
+                          <% } %>
                         <% } else { %>
-                          <button class="btn btn-danger" id="deletescore" onclick="deleteScore(<%= level.id %>)"><i class="fa fa-close"></i></button>
+                          <% if (config.passwordProtectionEnabled) { %>
+                            <div class="d-flex justify-content-between">
+                              <input type="password" class="form-control" id="verification_<%= level.id %>" placeholder="Password" required>
+                              <button class="btn btn-danger" id="deletescore" onclick="deleteScore('<%= level.id %>')"><i class="fa fa-close"></i></button>
+                            </div>
+                            <% } else { %>
+                              <button class="btn btn-danger" id="deletescore" onclick="deleteScore('<%= level.id %>')"><i class="fa fa-close"></i></button>
+                            <% } %>
                         <% } %>
                       </div>
                     </div>
@@ -102,8 +120,10 @@
                     <p><strong>Artists: </strong><%= level.metadata.artists %></p>
                     <p><strong>Author: </strong><%= level.metadata.author %></p>
                     <p><strong>Rating: </strong><%= level.metadata.rating %></p>
-                    <p><strong>Description: </strong><%= level.metadata.description %></p>
-                    <p><strong>Genre: </strong><%= level.metadata.genre %></p>
+                    <% if (level.metadata.type === undefined || level.metadata.type === 'local') { %>
+                      <p><strong>Description: </strong><%= level.metadata.description %></p>
+                      <p><strong>Genre: </strong><%= level.metadata.genre %></p>
+                    <% } %>
                     <!-- <button class="btn btn-primary" id="copymetadata" onclick="copyMetadata(<%= level %>)">Copy Metadata</button> -->
                   </div>
                 </div>

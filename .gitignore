@@ -134,4 +134,5 @@ dist
 
 # levels
 levels/**/*
+levels
 !levels/.gitkeep
